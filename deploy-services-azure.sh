@@ -14,6 +14,13 @@ if ! az account show 1>/dev/null 2>&1; then
 fi
 az account set --subscription $ARM_SUBSCRIPTION_ID
 
+# checking if AKS is running, otherwise start it
+aks_status=$(az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --query "powerState.code")
+if [ "$aks_status" != "\"Running\"" ]; then
+  printf "\n⚓  Starting AKS...\n\n"
+  az aks start --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
+fi
+
 printf "\n⚓  Getting K8s Context...\n\n"
 az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
 
@@ -38,24 +45,24 @@ kubectl apply -f ./local/components/state.yaml --wait=true
 
 printf '\n🎖️  Deploying Public API Service\n\n'
 cd ./src/public-api-service
-sh ./azure-deploy.sh ${ACR_NAME}
+sh ./service-deploy.sh --hostname ${ACR_NAME} --azure
 
 printf '\n ================================== \n\n'
 
 printf '\n🎖️  Deploying Fraud Service\n\n'
 cd ../../src/fraud-service
-sh ./azure-deploy.sh ${ACR_NAME}
+sh ./service-deploy.sh --hostname ${ACR_NAME} --azure
 
 printf '\n ================================== \n\n'
 
 printf '\n🎖️  Deploying Account Service\n\n'
 cd ../../src/account-service
-sh ./azure-deploy.sh ${ACR_NAME}
+sh ./service-deploy.sh --hostname ${ACR_NAME} --azure
 
 printf '\n ================================== \n\n'
 
 printf '\n🎖️  Notification Service\n\n'
 cd ../../src/notification-service
-sh ./azure-deploy.sh ${ACR_NAME}
+sh ./service-deploy.sh --hostname ${ACR_NAME} --azure
 
 printf "\n🎉 Azure environment setup completed!\n\n"
